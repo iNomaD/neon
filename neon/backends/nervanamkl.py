@@ -27,6 +27,7 @@ from ctypes import c_longlong, c_float, c_double, c_int
 import numpy as np
 from neon.backends import math_cpu
 import os
+import sys
 
 _none_slice = slice(None, None, None)
 
@@ -180,12 +181,19 @@ class NervanaMKL(NervanaCPU):
         assert get_mkl_lib(), "MKL is not installed correctly"
 
         path = os.path.dirname(os.path.realpath(__file__))
-        mkl_engine_path = os.path.join(path, os.pardir, 'backends', 'mklEngine', 'mklEngine.so')
-        self.mklEngine = ctypes.cdll.LoadLibrary(mkl_engine_path)
+        header_path = os.path.join(os.path.dirname(__file__), 'mklEngine', 'src', 'math_cpu.header')
 
-        math_engine_path = os.path.join(os.path.dirname(__file__), 'mklEngine', 'cmath.so')
-        header_path = os.path.join(os.path.dirname(__file__), 'mklEngine',
-                                   'src', 'math_cpu.header')
+        if sys.platform == 'win32':
+            mkl_ml_path = os.path.join(path, os.pardir, 'backends', 'mklEngine', 'mklml.dll')
+            ctypes.windll.LoadLibrary(mkl_ml_path)
+            mkl_engine_path = os.path.join(path, os.pardir, 'backends', 'mklEngine', 'mklEngine.dll')
+            self.mklEngine = ctypes.windll.LoadLibrary(mkl_engine_path)
+            math_engine_path = os.path.join(os.path.dirname(__file__), 'mklEngine', 'cmath.dll')
+        else:
+            mkl_engine_path = os.path.join(path, os.pardir, 'backends', 'mklEngine', 'mklEngine.so')
+            self.mklEngine = ctypes.cdll.LoadLibrary(mkl_engine_path)
+            math_engine_path = os.path.join(os.path.dirname(__file__), 'mklEngine', 'cmath.so')
+
         ffi = FFI()
         with open(header_path) as header:
             ffi.cdef(header.read())
